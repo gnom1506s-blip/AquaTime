@@ -107,6 +107,7 @@ final class WaterStore: ObservableObject {
         WidgetCenter.shared.reloadAllTimelines()
         updateIcon()
         checkAchievements()
+        Task { @MainActor in FriendsService.shared.push() }
         DispatchQueue.main.async { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
     }
 
