@@ -12,6 +12,7 @@ struct Reminder: Identifiable {
 
 final class WaterStore: ObservableObject {
     static let shared = WaterStore()
+    @Published var iconError: String?
     @AppStorage("healthOn", store: sharedDefaults) var healthOn = false { willSet { objectWillChange.send() } }
 
     @AppStorage("onboarded", store: sharedDefaults) var onboarded = false { willSet { objectWillChange.send() } }
@@ -92,9 +93,14 @@ final class WaterStore: ObservableObject {
     func updateIcon() {
         DispatchQueue.main.async {
             let app = UIApplication.shared
-            guard app.supportsAlternateIcons, app.applicationState == .active else { return }
+            guard app.applicationState == .active else { return }
+            guard app.supportsAlternateIcons else { self.iconError = "iOS сообщает: смена иконки не поддерживается этой установкой"; return }
             let name: String? = self.stage == 1 ? nil : "Icon\(self.stage)"
-            if app.alternateIconName != name { app.setAlternateIconName(name) }
+            if app.alternateIconName != name {
+                app.setAlternateIconName(name) { err in
+                    if let err { DispatchQueue.main.async { self.iconError = err.localizedDescription } }
+                }
+            }
         }
     }
 

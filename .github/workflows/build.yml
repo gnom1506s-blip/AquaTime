@@ -20,6 +20,8 @@ jobs:
           done
           codesign -f -s - --entitlements AquaTime/AquaTime.entitlements "$APP"
           codesign -d --entitlements - "$APP"
+          plutil -p "$APP/Info.plist" | sed -n '/CFBundleIcons/,/^  }/p'
+          ls "$APP" | grep -i icon
       - name: Package IPA
         run: |
           mkdir Payload

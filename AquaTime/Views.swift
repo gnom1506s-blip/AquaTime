@@ -99,6 +99,9 @@ struct HomeView: View {
                 }.padding()
             }
             .navigationTitle("💧 AquaTime")
+            .alert("Иконка не сменилась", isPresented: Binding(get: { store.iconError != nil }, set: { if !$0 { store.iconError = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: { Text(store.iconError ?? "") }
             .overlay { if showCelebration { CelebrationView().transition(.scale.combined(with: .opacity)) } }
         }
     }
