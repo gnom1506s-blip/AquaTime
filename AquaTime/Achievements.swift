@@ -1,0 +1,97 @@
+import SwiftUI
+
+// MARK: - Напитки
+enum Drink: String, CaseIterable, Identifiable {
+    case water, tea, coffee, juice, milk, soda
+    var id: String { rawValue }
+    var emoji: String {
+        switch self { case .water: "💧"; case .tea: "🍵"; case .coffee: "☕️"; case .juice: "🧃"; case .milk: "🥛"; case .soda: "🥤" }
+    }
+    var title: String {
+        switch self { case .water: "Вода"; case .tea: "Чай"; case .coffee: "Кофе"; case .juice: "Сок"; case .milk: "Молоко"; case .soda: "Газировка" }
+    }
+    /// Какая доля напитка засчитывается как вода
+    var factor: Double {
+        switch self { case .water: 1.0; case .tea: 0.9; case .coffee: 0.8; case .juice: 0.85; case .milk: 0.9; case .soda: 0.7 }
+    }
+    var color: Color {
+        switch self { case .water: .cyan; case .tea: .green; case .coffee: .brown; case .juice: .orange; case .milk: .gray; case .soda: .pink }
+    }
+}
+
+// MARK: - Достижения
+struct Achievement: Identifiable {
+    let id: String
+    let emoji: String
+    let title: String
+    let desc: String
+    let check: (WaterStore) -> Bool
+
+    static let all: [Achievement] = [
+        .init(id: "first", emoji: "💧", title: "Первый глоток", desc: "Отметить первый напиток") { $0.totalML > 0 },
+        .init(id: "goal1", emoji: "🎯", title: "В яблочко", desc: "Впервые выполнить дневную норму") { $0.goalsDone >= 1 },
+        .init(id: "streak3", emoji: "🔥", title: "Разогрев", desc: "3 дня подряд выполнять норму") { $0.streak >= 3 },
+        .init(id: "streak7", emoji: "🏅", title: "Неделя силы", desc: "7 дней подряд выполнять норму") { $0.streak >= 7 },
+        .init(id: "streak30", emoji: "👑", title: "Король воды", desc: "30 дней подряд выполнять норму") { $0.streak >= 30 },
+        .init(id: "early", emoji: "🌅", title: "Ранняя пташка", desc: "Выпить воду до 9:00") { $0.unlockedEarly },
+        .init(id: "pure", emoji: "🫧", title: "Чистый результат", desc: "Выполнить норму только водой") { $0.progress >= 1 && $0.todayDrinks.keys.allSatisfy { $0 == Drink.water.rawValue } },
+        .init(id: "taster", emoji: "🍹", title: "Дегустатор", desc: "4 разных напитка за день") { $0.todayDrinks.count >= 4 },
+        .init(id: "over", emoji: "🚀", title: "Перевыполнение", desc: "Выпить 150% нормы за день") { $0.drunk >= $0.goal * 3 / 2 },
+        .init(id: "l10", emoji: "🪣", title: "Ведро", desc: "Всего 10 литров") { $0.totalML >= 10_000 },
+        .init(id: "l100", emoji: "🛁", title: "Ванна", desc: "Всего 100 литров") { $0.totalML >= 100_000 },
+        .init(id: "l500", emoji: "🌊", title: "Океан", desc: "Всего 500 литров") { $0.totalML >= 500_000 },
+    ]
+}
+
+struct AchievementsView: View {
+    @EnvironmentObject var store: WaterStore
+    private let cols = [GridItem(.adaptive(minimum: 150), spacing: 12)]
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                let got = Achievement.all.filter { store.unlocked[$0.id] != nil }.count
+                VStack(spacing: 6) {
+                    Text("\(got) из \(Achievement.all.count)").font(.system(size: 36, weight: .bold, design: .rounded))
+                    ProgressView(value: Double(got), total: Double(Achievement.all.count)).tint(.orange)
+                    Text("Всего выпито: \(String(format: "%.1f", Double(store.totalML) / 1000)) л").font(.subheadline).foregroundStyle(.secondary)
+                }.padding()
+                LazyVGrid(columns: cols, spacing: 12) {
+                    ForEach(Achievement.all) { a in
+                        let date = store.unlocked[a.id]
+                        VStack(spacing: 6) {
+                            Text(a.emoji).font(.system(size: 44)).grayscale(date == nil ? 1 : 0).opacity(date == nil ? 0.35 : 1)
+                            Text(a.title).font(.headline).multilineTextAlignment(.center)
+                            Text(a.desc).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                            if let date {
+                                Text(Date(timeIntervalSince1970: date).formatted(date: .abbreviated, time: .omitted))
+                                    .font(.caption2.bold()).foregroundStyle(.orange)
+                            } else {
+                                Image(systemName: "lock.fill").font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 170).padding(10)
+                        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18))
+                        .overlay(RoundedRectangle(cornerRadius: 18).stroke(date == nil ? .clear : .orange.opacity(0.6), lineWidth: 2))
+                    }
+                }.padding(.horizontal)
+            }.navigationTitle("Награды")
+        }
+    }
+}
+
+struct AchievementToast: View {
+    let a: Achievement
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(a.emoji).font(.system(size: 40))
+            VStack(alignment: .leading) {
+                Text("Новая награда!").font(.caption.bold()).foregroundStyle(.orange)
+                Text(a.title).font(.headline)
+                Text(a.desc).font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+        }
+        .padding().background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+        .shadow(radius: 10).padding(.horizontal)
+    }
+}

@@ -44,10 +44,18 @@ struct RootView: View {
             TabView {
                 HomeView().tabItem { Label("Сегодня", systemImage: "drop.fill") }
                 ScheduleView().tabItem { Label("График", systemImage: "clock.fill") }
+                AchievementsView().tabItem { Label("Награды", systemImage: "trophy.fill") }
                 SettingsView().tabItem { Label("Настройки", systemImage: "gearshape.fill") }
             }.tint(.cyan)
+            .overlay(alignment: .top) {
+                if let a = store.newAchievement {
+                    AchievementToast(a: a).transition(.move(edge: .top).combined(with: .opacity))
+                        .onTapGesture { store.newAchievement = nil }
+                }
+            }
+            .preferredColorScheme(store.theme == 1 ? .light : store.theme == 2 ? .dark : nil)
         } else {
-            OnboardingView()
+            OnboardingView().preferredColorScheme(store.theme == 1 ? .light : store.theme == 2 ? .dark : nil)
         }
     }
 }

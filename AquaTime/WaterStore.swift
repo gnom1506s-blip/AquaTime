@@ -13,6 +13,39 @@ struct Reminder: Identifiable {
 final class WaterStore: ObservableObject {
     static let shared = WaterStore()
     @Published var iconError: String?
+    @Published var newAchievement: Achievement?
+    @AppStorage("theme", store: sharedDefaults) var theme = 0 { willSet { objectWillChange.send() } }   // 0 системная, 1 светлая, 2 тёмная
+    @AppStorage("totalML", store: sharedDefaults) var totalML = 0
+    @AppStorage("goalsDone", store: sharedDefaults) var goalsDone = 0
+    @AppStorage("unlockedJSON", store: sharedDefaults) private var unlockedJSON = "{}"
+    @AppStorage("todayDrinksJSON", store: sharedDefaults) private var todayDrinksJSON = "{}"
+    var unlockedEarly = false
+
+    var unlocked: [String: Double] {
+        get { (try? JSONDecoder().decode([String: Double].self, from: Data(unlockedJSON.utf8))) ?? [:] }
+        set { if let d = try? JSONEncoder().encode(newValue) { unlockedJSON = String(decoding: d, as: UTF8.self) } }
+    }
+    /// Сегодняшние напитки: id -> мл (реальный объём)
+    var todayDrinks: [String: Int] {
+        get { (try? JSONDecoder().decode([String: Int].self, from: Data(todayDrinksJSON.utf8))) ?? [:] }
+        set { if let d = try? JSONEncoder().encode(newValue) { todayDrinksJSON = String(decoding: d, as: UTF8.self) } }
+    }
+
+    func checkAchievements() {
+        var u = unlocked
+        for a in Achievement.all where u[a.id] == nil && a.check(self) {
+            u[a.id] = Date().timeIntervalSince1970
+            let ach = a
+            DispatchQueue.main.async {
+                withAnimation(.spring) { self.newAchievement = ach }
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    withAnimation { if self.newAchievement?.id == ach.id { self.newAchievement = nil } }
+                }
+            }
+        }
+        unlocked = u
+    }
     @AppStorage("healthOn", store: sharedDefaults) var healthOn = false { willSet { objectWillChange.send() } }
 
     @AppStorage("onboarded", store: sharedDefaults) var onboarded = false { willSet { objectWillChange.send() } }
@@ -51,19 +84,27 @@ final class WaterStore: ObservableObject {
         }
         lastDay = todayKey
         drunkStored = 0
+        todayDrinksJSON = "{}"
         return true
     }
 
-    func add(_ ml: Int) {
+    func add(_ ml: Int, drink: Drink = .water) {
         rolloverIfNeeded()
         objectWillChange.send()
         let wasDone = drunkStored >= goal
-        drunkStored = max(0, drunkStored + ml)
-        if !wasDone && drunkStored >= goal { streak += 1 }
+        let effective = ml > 0 ? Int((Double(ml) * drink.factor).rounded()) : ml
+        drunkStored = max(0, drunkStored + effective)
+        if ml > 0 {
+            totalML += effective
+            var t = todayDrinks; t[drink.rawValue, default: 0] += ml; todayDrinks = t
+            if Calendar.current.component(.hour, from: Date()) < 9 { unlockedEarly = true }
+        }
+        if !wasDone && drunkStored >= goal { streak += 1; goalsDone += 1 }
         if wasDone && drunkStored < goal { streak = max(0, streak - 1) }
-        if ml > 0 && healthOn { HealthManager.shared.saveWater(ml) }
+        if effective > 0 && healthOn { HealthManager.shared.saveWater(effective) }
         WidgetCenter.shared.reloadAllTimelines()
         updateIcon()
+        checkAchievements()
         DispatchQueue.main.async { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
     }
 

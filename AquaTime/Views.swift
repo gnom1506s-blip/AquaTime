@@ -47,7 +47,8 @@ struct HomeView: View {
     @EnvironmentObject var store: WaterStore
     @State private var showCelebration = false
     @State private var custom = 300.0
-    private let glasses: [(String, Int)] = [("🥃", 150), ("🥛", 250), ("🧴", 500)]
+    @State private var drink: Drink = .water
+    private let glasses: [(String, Int)] = [("S", 150), ("M", 250), ("L", 500)]
 
     var body: some View {
         NavigationStack {
@@ -75,12 +76,31 @@ struct HomeView: View {
                     }
                     Text(store.mood.text).font(.title3.weight(.semibold)).multilineTextAlignment(.center)
 
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(Drink.allCases) { d in
+                                Button { withAnimation(.snappy) { drink = d } } label: {
+                                    Text("\(d.emoji) \(d.title)").font(.subheadline.weight(.semibold))
+                                        .padding(.horizontal, 12).padding(.vertical, 8)
+                                        .background(drink == d ? d.color.opacity(0.85) : Color(.secondarySystemBackground), in: Capsule())
+                                        .foregroundStyle(drink == d ? .white : .primary)
+                                }.buttonStyle(.plain)
+                            }
+                        }
+                    }
+                    if drink != .water {
+                        Text("\(drink.title) засчитывается на \(Int(drink.factor * 100))% как вода")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     HStack(spacing: 12) {
                         ForEach(glasses, id: \.1) { g in
-                            Button { drink(g.1) } label: {
-                                VStack { Text(g.0).font(.largeTitle); Text("+\(g.1) мл").font(.caption.bold()) }
-                                    .frame(maxWidth: .infinity).padding(.vertical, 14)
-                                    .background(.cyan.opacity(0.15), in: RoundedRectangle(cornerRadius: 18))
+                            Button { addDrink(g.1) } label: {
+                                VStack(spacing: 2) {
+                                    Text(drink.emoji).font(g.0 == "S" ? .title2 : g.0 == "M" ? .title : .largeTitle)
+                                    Text("+\(g.1) мл").font(.caption.bold())
+                                }
+                                .frame(maxWidth: .infinity, minHeight: 70).padding(.vertical, 8)
+                                .background(drink.color.opacity(0.18), in: RoundedRectangle(cornerRadius: 18))
                             }.buttonStyle(.plain)
                         }
                     }
@@ -89,7 +109,7 @@ struct HomeView: View {
                         Text("Своё количество: \(Int(custom)) мл").font(.subheadline)
                         HStack {
                             Slider(value: $custom, in: 50...1000, step: 50).tint(.cyan)
-                            Button("Добавить") { drink(Int(custom)) }.buttonStyle(.borderedProminent).tint(.cyan)
+                            Button("Добавить") { addDrink(Int(custom)) }.buttonStyle(.borderedProminent).tint(.cyan)
                         }
                     }
                     Button(role: .destructive) { store.add(-250) } label: { Label("Отменить 250 мл", systemImage: "arrow.uturn.backward") }
@@ -113,9 +133,9 @@ struct HomeView: View {
         return (times.first { $0 > m } ?? times.first)?.clockString
     }
 
-    private func drink(_ ml: Int) {
+    private func addDrink(_ ml: Int) {
         let before = store.drunk
-        withAnimation { store.add(ml) }
+        withAnimation { store.add(ml, drink: drink) }
         if before < store.goal && store.drunk >= store.goal {
             withAnimation(.spring) { showCelebration = true }
             DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { withAnimation { showCelebration = false } }
@@ -158,7 +178,7 @@ struct WeekChart: View {
                     }.frame(maxWidth: .infinity)
                 }
             }.frame(height: 115, alignment: .bottom)
-        }.padding().background(.gray.opacity(0.08), in: RoundedRectangle(cornerRadius: 18))
+        }.padding().background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18))
     }
 }
 
@@ -223,6 +243,11 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 GoalSettings()
+                Section("Оформление") {
+                    Picker("Тема", selection: $store.theme) {
+                        Text("Авто").tag(0); Text("☀️ Светлая").tag(1); Text("🌙 Тёмная").tag(2)
+                    }.pickerStyle(.segmented)
+                }
                 Section("Уведомления") { Toggle("Напоминания", isOn: $store.notificationsOn) }
                 Section(footer: Text("Каждый выпитый стакан будет записываться в приложение «Здоровье»")) {
                     Toggle(isOn: Binding(get: { store.healthOn }, set: { on in
