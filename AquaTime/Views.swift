@@ -132,10 +132,11 @@ struct CelebrationView: View {
 
 struct WeekChart: View {
     @EnvironmentObject var store: WaterStore
+    private static let f: DateFormatter = { let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; return f }()
+    private static let wd: DateFormatter = { let f = DateFormatter(); f.locale = Locale(identifier: "ru_RU"); f.dateFormat = "EE"; return f }()
     var body: some View {
         let cal = Calendar.current
-        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
-        let wd = DateFormatter(); wd.locale = Locale(identifier: "ru_RU"); wd.dateFormat = "EE"
+        let f = Self.f, wd = Self.wd
         let days = (0..<7).reversed().map { cal.date(byAdding: .day, value: -$0, to: Date())! }
         VStack(alignment: .leading, spacing: 8) {
             Text("Последние 7 дней").font(.headline)
