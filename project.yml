@@ -21,6 +21,7 @@ targets:
           - CFBundleURLSchemes: [aquatime]
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.example.aquatime
+      ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       MARKETING_VERSION: "1.0"
       CURRENT_PROJECT_VERSION: "1"
   AquaWidget:
