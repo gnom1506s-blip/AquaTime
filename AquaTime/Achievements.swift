@@ -10,10 +10,6 @@ enum Drink: String, CaseIterable, Identifiable {
     var title: String {
         switch self { case .water: "Вода"; case .tea: "Чай"; case .coffee: "Кофе"; case .juice: "Сок"; case .milk: "Молоко"; case .soda: "Газировка" }
     }
-    /// Какая доля напитка засчитывается как вода
-    var factor: Double {
-        switch self { case .water: 1.0; case .tea: 0.9; case .coffee: 0.8; case .juice: 0.85; case .milk: 0.9; case .soda: 0.7 }
-    }
     var color: Color {
         switch self { case .water: .cyan; case .tea: .green; case .coffee: .brown; case .juice: .orange; case .milk: .gray; case .soda: .pink }
     }
@@ -34,7 +30,7 @@ struct Achievement: Identifiable {
         .init(id: "streak7", emoji: "🏅", title: "Неделя силы", desc: "7 дней подряд выполнять норму") { $0.streak >= 7 },
         .init(id: "streak30", emoji: "👑", title: "Король воды", desc: "30 дней подряд выполнять норму") { $0.streak >= 30 },
         .init(id: "early", emoji: "🌅", title: "Ранняя пташка", desc: "Выпить воду до 9:00") { $0.unlockedEarly },
-        .init(id: "pure", emoji: "🫧", title: "Чистый результат", desc: "Выполнить норму только водой") { $0.progress >= 1 && $0.todayDrinks.keys.allSatisfy { $0 == Drink.water.rawValue } },
+        .init(id: "pure", emoji: "🫧", title: "Чистый день", desc: "Выполнить норму без кофе и газировки") { $0.progress >= 1 && $0.todayDrinks[Drink.coffee.rawValue] == nil && $0.todayDrinks[Drink.soda.rawValue] == nil },
         .init(id: "taster", emoji: "🍹", title: "Дегустатор", desc: "4 разных напитка за день") { $0.todayDrinks.count >= 4 },
         .init(id: "over", emoji: "🚀", title: "Перевыполнение", desc: "Выпить 150% нормы за день") { $0.drunk >= $0.goal * 3 / 2 },
         .init(id: "l10", emoji: "🪣", title: "Ведро", desc: "Всего 10 литров") { $0.totalML >= 10_000 },

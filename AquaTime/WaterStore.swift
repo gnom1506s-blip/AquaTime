@@ -92,12 +92,14 @@ final class WaterStore: ObservableObject {
         rolloverIfNeeded()
         objectWillChange.send()
         let wasDone = drunkStored >= goal
-        let effective = ml > 0 ? Int((Double(ml) * drink.factor).rounded()) : ml
+        // В норму идёт только вода, остальные напитки — справочная статистика
+        let effective = ml > 0 ? (drink == .water ? ml : 0) : ml
         drunkStored = max(0, drunkStored + effective)
         if ml > 0 {
             totalML += effective
+            if drink != .water { objectWillChange.send() }
             var t = todayDrinks; t[drink.rawValue, default: 0] += ml; todayDrinks = t
-            if Calendar.current.component(.hour, from: Date()) < 9 { unlockedEarly = true }
+            if drink == .water && Calendar.current.component(.hour, from: Date()) < 9 { unlockedEarly = true }
         }
         if !wasDone && drunkStored >= goal { streak += 1; goalsDone += 1 }
         if wasDone && drunkStored < goal { streak = max(0, streak - 1) }

@@ -89,8 +89,13 @@ struct HomeView: View {
                         }
                     }
                     if drink != .water {
-                        Text("\(drink.title) засчитывается на \(Int(drink.factor * 100))% как вода")
+                        Label("\(drink.title) не входит в норму воды — только для статистики", systemImage: "info.circle")
                             .font(.caption).foregroundStyle(.secondary)
+                    }
+                    let others = Drink.allCases.filter { $0 != .water }.compactMap { d in store.todayDrinks[d.rawValue].map { "\(d.emoji) \($0) мл" } }
+                    if !others.isEmpty {
+                        Text("Также сегодня: " + others.joined(separator: "  ·  "))
+                            .font(.footnote).foregroundStyle(.secondary)
                     }
                     HStack(spacing: 12) {
                         ForEach(glasses, id: \.1) { g in
