@@ -7,7 +7,8 @@ final class HealthManager {
 
     func requestAuth(_ done: @escaping (Bool) -> Void) {
         guard HKHealthStore.isHealthDataAvailable() else { return done(false) }
-        store.requestAuthorization(toShare: [water], read: [water]) { ok, _ in
+        store.requestAuthorization(toShare: [water], read: [water]) { ok, error in
+            if let error { print("HealthKit:", error) }
             DispatchQueue.main.async { done(ok) }
         }
     }

@@ -213,6 +213,7 @@ struct GoalSettings: View {
 
 struct SettingsView: View {
     @EnvironmentObject var store: WaterStore
+    @State private var healthError = false
     var body: some View {
         NavigationStack {
             Form {
@@ -220,11 +221,16 @@ struct SettingsView: View {
                 Section("Уведомления") { Toggle("Напоминания", isOn: $store.notificationsOn) }
                 Section(footer: Text("Каждый выпитый стакан будет записываться в приложение «Здоровье»")) {
                     Toggle(isOn: Binding(get: { store.healthOn }, set: { on in
-                        if on { HealthManager.shared.requestAuth { ok in store.healthOn = ok } } else { store.healthOn = false }
+                        if on { HealthManager.shared.requestAuth { ok in store.healthOn = ok; healthError = !ok } } else { store.healthOn = false }
                     })) { Label("Apple Здоровье", systemImage: "heart.fill").foregroundStyle(.pink) }
                 }
             }
             .navigationTitle("Настройки")
+            .alert("Нет доступа к «Здоровью»", isPresented: $healthError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Откройте Настройки → Здоровье → Доступ к данным и устройства → AquaTime и разрешите запись воды.")
+            }
             .onChange(of: store.goal) { store.reschedule() }
             .onChange(of: store.wakeMinutes) { store.reschedule() }
             .onChange(of: store.sleepMinutes) { store.reschedule() }
