@@ -9,6 +9,7 @@ struct WaterEntry: TimelineEntry {
     let goal: Int
     let streak: Int
     var progress: Double { min(Double(drunk) / Double(max(goal, 1)), 1) }
+    var stage: Int { progress >= 1 ? 3 : progress >= 0.6 ? 2 : progress >= 0.25 ? 1 : 0 }
 }
 
 struct Provider: TimelineProvider {
@@ -37,7 +38,8 @@ struct AquaWidgetView: View {
                 .stroke(LinearGradient(colors: [.cyan, .blue], startPoint: .top, endPoint: .bottom),
                         style: StrokeStyle(lineWidth: 10, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-            Text(entry.progress >= 1 ? "🏆" : "💧").font(.title)
+            Image("Plant\(entry.stage)").resizable().scaledToFit()
+                .clipShape(Circle()).padding(14)
         }
         Group {
             if family == .systemMedium {

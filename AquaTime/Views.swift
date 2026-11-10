@@ -65,7 +65,9 @@ struct HomeView: View {
                     ZStack {
                         WaterBottle(progress: store.progress).frame(width: 250, height: 250)
                         VStack(spacing: 4) {
-                            Text(store.mood.emoji).font(.system(size: 44))
+                            Image("Plant\(store.stage)").resizable().scaledToFit()
+                                .frame(width: 70, height: 70).clipShape(RoundedRectangle(cornerRadius: 16))
+                                .animation(.spring, value: store.stage)
                             Text("\(store.drunk)").font(.system(size: 44, weight: .bold, design: .rounded))
                                 .contentTransition(.numericText())
                             Text("из \(store.goal) мл").font(.headline).opacity(0.8)

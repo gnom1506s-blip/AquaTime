@@ -62,6 +62,7 @@ final class WaterStore: ObservableObject {
         if wasDone && drunkStored < goal { streak = max(0, streak - 1) }
         if ml > 0 && healthOn { HealthManager.shared.saveWater(ml) }
         WidgetCenter.shared.reloadAllTimelines()
+        updateIcon()
         DispatchQueue.main.async { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
     }
 
@@ -81,6 +82,20 @@ final class WaterStore: ObservableObject {
 
     func reschedule() {
         NotificationManager.shared.schedule(reminders: notificationsOn ? reminders : [], goal: goal)
+    }
+
+    /// Стадия растения: 0 — грустное, 1 — росток, 2 — растение, 3 — цветёт
+    var stage: Int { Self.stage(for: progress) }
+    static func stage(for p: Double) -> Int { p >= 1 ? 3 : p >= 0.6 ? 2 : p >= 0.25 ? 1 : 0 }
+
+    /// Меняет иконку на домашнем экране (только когда приложение открыто)
+    func updateIcon() {
+        DispatchQueue.main.async {
+            let app = UIApplication.shared
+            guard app.supportsAlternateIcons, app.applicationState == .active else { return }
+            let name: String? = self.stage == 1 ? nil : "Icon\(self.stage)"
+            if app.alternateIconName != name { app.setAlternateIconName(name) }
+        }
     }
 
     var mood: (emoji: String, text: String) {

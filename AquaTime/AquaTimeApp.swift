@@ -26,9 +26,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 struct AquaTimeApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     @StateObject private var store = WaterStore.shared
+    @Environment(\.scenePhase) private var phase
     var body: some Scene {
         WindowGroup {
             RootView().environmentObject(store)
+                .onChange(of: phase) { if phase == .active { store.objectWillChange.send(); store.updateIcon() } }
                 .onOpenURL { url in if url.host == "add" { store.add(250) } }
                 .onAppear { NotificationManager.shared.requestPermission { store.reschedule() } }
         }
