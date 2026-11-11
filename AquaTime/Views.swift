@@ -75,6 +75,11 @@ struct HomeView: View {
                         }.foregroundStyle(store.progress > 0.45 ? .white : .primary)
                     }
                     Text(store.mood.text).font(.title3.weight(.semibold)).multilineTextAlignment(.center)
+                    if let tease = store.teaseLine {
+                        Text(tease).font(.subheadline.weight(.medium)).foregroundStyle(.purple)
+                            .padding(.horizontal, 14).padding(.vertical, 8)
+                            .background(Color.purple.opacity(0.12), in: Capsule())
+                    }
 
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
@@ -215,16 +220,15 @@ struct ScheduleView: View {
 // MARK: - Настройки
 struct GoalSettings: View {
     @EnvironmentObject var store: WaterStore
-    @State private var weight = 70.0
     var body: some View {
-        Section("Дневная цель") {
-            Stepper("\(store.goal) мл", value: $store.goal, in: 500...5000, step: 100)
-            HStack {
-                Text("Вес: \(Int(weight)) кг")
-                Slider(value: $weight, in: 30...150, step: 1)
+        Section(header: Text("Дневная цель"), footer: Text("Норма считается как 30 мл на 1 кг веса. Её можно подправить вручную кнопками − и +.")) {
+            VStack(alignment: .leading) {
+                Text("Вес: \(Int(store.weight)) кг").font(.headline)
+                Slider(value: $store.weight, in: 30...150, step: 1).tint(.cyan)
             }
-            Button("Рассчитать по весу (30 мл/кг)") { store.goal = Int(weight * 30 / 50) * 50 }
+            Stepper("Норма: \(store.goal) мл", value: $store.goal, in: 500...5000, step: 50)
         }
+        .onChange(of: store.weight) { store.goal = Int((store.weight * 30 / 50).rounded()) * 50 }
         Section("Режим дня") {
             minutesPicker("Подъём", $store.wakeMinutes)
             minutesPicker("Отбой", $store.sleepMinutes)
@@ -253,7 +257,10 @@ struct SettingsView: View {
                         Text("Авто").tag(0); Text("☀️ Светлая").tag(1); Text("🌙 Тёмная").tag(2)
                     }.pickerStyle(.segmented)
                 }
-                Section("Уведомления") { Toggle("Напоминания", isOn: $store.notificationsOn) }
+                Section(header: Text("Уведомления"), footer: Text("Если не отметить воду через 30 минут после напоминания, придёт шуточный подкол 😜")) {
+                    Toggle("Напоминания", isOn: $store.notificationsOn)
+                    Toggle("Подколы за пропуски", isOn: $store.teasesOn)
+                }
                 Section(footer: Text("Каждый выпитый стакан будет записываться в приложение «Здоровье»")) {
                     Toggle(isOn: Binding(get: { store.healthOn }, set: { on in
                         if on { HealthManager.shared.requestAuth { ok in store.healthOn = ok; healthError = !ok } } else { store.healthOn = false }
@@ -271,6 +278,7 @@ struct SettingsView: View {
             .onChange(of: store.sleepMinutes) { store.reschedule() }
             .onChange(of: store.intervalMinutes) { store.reschedule() }
             .onChange(of: store.notificationsOn) { store.reschedule() }
+            .onChange(of: store.teasesOn) { store.reschedule() }
         }
     }
 }

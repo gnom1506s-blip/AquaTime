@@ -20,6 +20,24 @@ final class WaterStore: ObservableObject {
     @AppStorage("unlockedJSON", store: sharedDefaults) private var unlockedJSON = "{}"
     @AppStorage("todayDrinksJSON", store: sharedDefaults) private var todayDrinksJSON = "{}"
     var unlockedEarly = false
+    var unlockedLate = false
+    @AppStorage("weight", store: sharedDefaults) var weight = 70.0 { willSet { objectWillChange.send() } }
+    @AppStorage("teasesOn", store: sharedDefaults) var teasesOn = true { willSet { objectWillChange.send() } }
+    @AppStorage("missedPast", store: sharedDefaults) var missedPast = 0
+    @AppStorage("failStreak", store: sharedDefaults) var failStreak = 0
+    @AppStorage("zeroDays", store: sharedDefaults) var zeroDays = 0
+    @AppStorage("camelDays", store: sharedDefaults) var camelDays = 0
+    @AppStorage("almostDays", store: sharedDefaults) var almostDays = 0
+
+    /// Пропущенные напоминания: время прошло (+30 мин), а нужный объём ещё не выпит
+    func missed(drunk: Int, at now: Date?) -> Int {
+        reminders.enumerated().filter { i, r in
+            let passed = now.map { r.time.addingTimeInterval(30 * 60) < $0 } ?? true
+            return passed && r.amount * (i + 1) > drunk
+        }.count
+    }
+    var missedToday: Int { missed(drunk: drunk, at: Date()) }
+    var totalMissed: Int { missedPast + missedToday }
 
     var unlocked: [String: Double] {
         get { (try? JSONDecoder().decode([String: Double].self, from: Data(unlockedJSON.utf8))) ?? [:] }
@@ -81,6 +99,13 @@ final class WaterStore: ObservableObject {
             // серия: была ли вчера выполнена цель
             let yesterday = Self.dayFmt.string(from: Calendar.current.date(byAdding: .day, value: -1, to: Date())!)
             if !(lastDay == yesterday && drunkStored >= goal) { streak = 0 }
+            // статистика для антинаград
+            missedPast += missed(drunk: drunkStored, at: nil)
+            let p = Double(drunkStored) / Double(max(goal, 1))
+            if drunkStored == 0 { zeroDays += 1 }
+            if p < 0.25 { camelDays += 1 }
+            if p >= 0.9 && p < 1 { almostDays += 1 }
+            failStreak = drunkStored >= goal ? 0 : failStreak + 1
         }
         lastDay = todayKey
         drunkStored = 0
@@ -100,6 +125,8 @@ final class WaterStore: ObservableObject {
             if drink != .water { objectWillChange.send() }
             var t = todayDrinks; t[drink.rawValue, default: 0] += ml; todayDrinks = t
             if drink == .water && Calendar.current.component(.hour, from: Date()) < 9 { unlockedEarly = true }
+            if drink == .water && (todayDrinks[Drink.water.rawValue] ?? 0) == ml
+                && Calendar.current.component(.hour, from: Date()) >= 12 { unlockedLate = true }
         }
         if !wasDone && drunkStored >= goal { streak += 1; goalsDone += 1 }
         if wasDone && drunkStored < goal { streak = max(0, streak - 1) }
@@ -107,6 +134,7 @@ final class WaterStore: ObservableObject {
         WidgetCenter.shared.reloadAllTimelines()
         updateIcon()
         checkAchievements()
+        scheduleTeases()
         Task { @MainActor in FriendsService.shared.push() }
         DispatchQueue.main.async { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
     }
@@ -127,6 +155,11 @@ final class WaterStore: ObservableObject {
 
     func reschedule() {
         NotificationManager.shared.schedule(reminders: notificationsOn ? reminders : [], goal: goal)
+        scheduleTeases()
+    }
+
+    func scheduleTeases() {
+        NotificationManager.shared.scheduleTeases(reminders: notificationsOn && teasesOn ? reminders : [], drunk: drunk)
     }
 
     /// Стадия растения: 0 — грустное, 1 — росток, 2 — растение, 3 — цветёт
@@ -146,6 +179,17 @@ final class WaterStore: ObservableObject {
                 }
             }
         }
+    }
+
+    static let teaseNames = [
+        "сухарик 🍞", "вобла сушёная 🐟", "кактус 🌵", "изюминка 🍇", "верблюд 🐪", "человек-пустыня 🏜️",
+        "сухофрукт 🍑", "гербарий 🍂", "обезвоженный тюлень 🦭", "мумия 🧟", "чипсина 🥔", "ходячая засуха ☀️",
+    ]
+    var teaseLine: String? {
+        let m = missedToday
+        guard m > 0, teasesOn else { return nil }
+        let name = Self.teaseNames[(m + Calendar.current.component(.day, from: Date())) % Self.teaseNames.count]
+        return "Пропущено напоминаний: \(m). Ну ты и \(name)"
     }
 
     var mood: (emoji: String, text: String) {

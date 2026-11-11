@@ -30,7 +30,7 @@ struct AquaTimeApp: App {
     var body: some Scene {
         WindowGroup {
             RootView().environmentObject(store)
-                .onChange(of: phase) { if phase == .active { store.objectWillChange.send(); store.updateIcon() } }
+                .onChange(of: phase) { if phase == .active { store.objectWillChange.send(); store.updateIcon(); store.checkAchievements(); store.scheduleTeases() } }
                 .onOpenURL { url in if url.host == "add" { store.add(250) } }
                 .onAppear { NotificationManager.shared.requestPermission { store.reschedule() } }
         }
