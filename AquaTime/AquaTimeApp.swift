@@ -44,7 +44,6 @@ struct RootView: View {
             TabView {
                 HomeView().tabItem { Label("Сегодня", systemImage: "drop.fill") }
                 ScheduleView().tabItem { Label("График", systemImage: "clock.fill") }
-                FriendsView().tabItem { Label("Друзья", systemImage: "person.2.fill") }
                 AchievementsView().tabItem { Label("Награды", systemImage: "trophy.fill") }
                 SettingsView().tabItem { Label("Настройки", systemImage: "gearshape.fill") }
             }.tint(.cyan)
